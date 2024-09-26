@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div>
+      <label> Input file </label>
+      <input type="file" id="myfile" multiple />
+      <button id="submit">submit</button>
+
+      <div id="preview">
+        <p>No files currently selected for upload</p>
+      </div>
+    </div>
+    <script>
+      
+      const btnEle = document.getElementById('submit');
+      const input = document.getElementById('myfile');
+      const preview = document.getElementById('preview')
+      const progressEle = document.createElement('progress')
+      let progressTracking = {};
+      let files = [];
+
+      function returnFileSize(number) {
+         if (number < 1e3) {
+           return `${number} bytes`;
+         } else if (number >= 1e3 && number < 1e6) {
+           return `${(number / 1e3).toFixed(1)} KB`;
+        } else {
+           return `${(number / 1e6).toFixed(1)} MB`;
+         }
+     }
+
+
+      input.addEventListener('change', (e) => {
+        e.preventDefault();
+        const inputFiles = e.target.files
+        console.log('hello')
+        // while (preview.firstChild) {
+        //    preview.removeChild(preview.firstChild);
+        // }
+       if (Object.keys(inputFiles).length === 0) {
+          const para = document.createElement("p");
+          para.textContent = "No files currently selected for upload";
+          preview.appendChild(para);
+       } else {
+        const olEle = document.createElement('ol')
+        preview.appendChild(olEle);
+         for(let i=0; i < Object.keys(inputFiles).length; i++){
+           let index = i+1
+            files.push({file: inputFiles[i], index : index})
+            const liEle = document.createElement('li');
+            updateProgress(index,0)
+            liEle.innerHTML += `${inputFiles[i].name} has a size ${returnFileSize(inputFiles[i].size)}`
+            liEle.innerHTML += ` <progress value="0" max="100" id="${index}"></progress>`;
+            olEle.appendChild(liEle)
+         }
+       }
+      })
+
+      btnEle.addEventListener('click', async (e) => {
+        e.preventDefault();
+        for(const {...file} of files){
+          const chunkSize = 1024 * 1024; // 1MB
+          const totalChunks = Math.ceil(file.file.size / chunkSize);
+          let startByte = 0;
+          for (let i = 1; i <= totalChunks; i++) {
+            const endByte = Math.min(startByte + chunkSize, file.file.size);
+            const chunk = file.file.slice(startByte, endByte);
+            await uploadChunk(chunk, totalChunks, i, file.index);
+            startByte = endByte;
+          }
+          console.log('Upload complete');
+        }
+      });
+      async function uploadChunk(chunk, totalChunks, currentChunk, index) {
+        try {
+          const formData = new FormData();
+          formData.append('file', chunk);
+          formData.append('totalChunks', totalChunks);
+          formData.append('currentChunk', currentChunk);
+          const response = await fetch('http://localhost:3000/upload', {
+            method: 'POST',
+            body: formData
+          });
+          if (!response.ok) {
+            throw new Error('Chunk upload failed');
+          }
+          const getProgressBar = document.getElementById(index);
+          const value = Math.round((currentChunk/totalChunks) * 100)
+
+          if(getProgressBar){
+             getProgressBar.value = value
+          }
+        } catch (error) {
+          console.log(error)
+        }
+      }
+      function updateProgress(index,value){
+        progressTracking = {...progressTracking, index : { value: 0 } }
+      }
+    </script>
+  </body>
+</html>
+
+ <!--  const filesArr = new FormData();
+
+//       input.addEventListener("change", updateImageDisplay);
+
+//       function updateImageDisplay(e) {
+//         while (preview.firstChild) {
+//           preview.removeChild(preview.firstChild);
+//         }
+
+//         const curFiles = input.files;
+//         if (curFiles.length === 0) {
+//           const para = document.createElement("p");
+//           para.textContent = "No files currently selected for upload";
+//           preview.appendChild(para);
+//         } else {
+//           const list = document.createElement("ol");
+//           preview.appendChild(list);
+             
+//           for (const file of curFiles) {
+//             const listItem = document.createElement("li");
+//             const para = document.createElement("p");
+//             filesArr.append('file', file)
+//             para.textContent = `File name ${
+//               file.name
+//             }, file size ${returnFileSize(file.size)}.`;
+//             const progessEle = document.createElement("progress")
+//             progessEle.value = 10;
+//             progessEle.max = 100;
+//             para.appendChild(progessEle)
+//             listItem.appendChild(para);
+//             list.appendChild(listItem);
+//           }
+//         }
+//       }
+
+//       function returnFileSize(number) {
+//         if (number < 1e3) {
+//           return `${number} bytes`;
+//         } else if (number >= 1e3 && number < 1e6) {
+//           return `${(number / 1e3).toFixed(1)} KB`;
+//         } else {
+//           return `${(number / 1e6).toFixed(1)} MB`;
+//         }
+//       }
+
+//       const button = document.getElementById('submit');
+//       button.addEventListener("click", async(e) => {
+//         e.preventDefault();
+//         try {
+//           const resp = await fetch("http://localhost:3000/upload", {
+//             method : "POST",
+//             body : filesArr
+//           })
+//           console.log(await resp.json())
+//           const para = document.createElement("p");
+//           para.append("Image uploaded!");
+//           preview.replaceChildren(para);
+//         } catch (error) {
+//           console.log('Error', error)
+//           const para = document.createElement("p");
+//           para.append("Image not uploaded!");
+//           preview.replaceChildren(para);
+//         }
+
+//       }); -->
